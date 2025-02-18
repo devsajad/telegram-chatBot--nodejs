@@ -1,16 +1,16 @@
 import dotenv from "dotenv";
 dotenv.config();
-
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import User from "../models/User.js";
 import Chat from "../models/Chat.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY_3);
-
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-pro-exp-02-05",
-  systemInstruction:
-    "به پیامای مختلف واکنش نشون میده ( به زبان فارسی محاوره ای صحبت میکنه ) و به شدت بی ادبه و فحشای بد میده",
+const openai = new OpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.GOOGLE_API_KEY_1,
+  defaultHeaders: {
+    "HTTP-Referer": "<YOUR_SITE_URL>", // Optional. Replace with your site URL.
+    "X-Title": "<YOUR_SITE_NAME>", // Optional. Replace with your site name.
+  },
 });
 
 export default async function aiApi(userId, message) {
@@ -21,48 +21,65 @@ export default async function aiApi(userId, message) {
 
     // Retrieve or create a chat session for the user
     let chatSession = await getUserChatSession(user);
+    console.log("Formatted chat history:", chatSession);
 
-    let result = await chatSession.sendMessageStream(message);
+    // Send request to OpenRouter using the OpenAI API interface
+    const completion = await openai.chat.completions.create({
+      model: "google/gemini-2.0-flash-001",
+      messages: [
+        {
+          role: "system",
+          content:
+            "به شدت هورنیه ( فارسی محاوره ای صحبت میکنه ) خیلی هورنیه و همیشه بالاست",
+        },
+        ...chatSession, // Append previous chat history (in the proper format)
+        { role: "user", content: message },
+      ],
+    });
+    const responseText = completion.choices[0].message.content;
 
-    let responseText = "";
-    for await (const chunk of result.stream) {
-      responseText += chunk.text();
-    }
-
-    // 🔥 Save chat history
+    // Save chat history
     await saveChatMessage(user, message, responseText);
 
     return responseText;
   } catch (error) {
-    console.log("Ai Api problem:", error);
+    console.error("Ai Api problem:", error);
     return "یه لحظه کص نگو سرم شلوغه";
   }
 }
 
 async function getUserChatSession(user) {
-  let chat;
-
-  if (user.chatId) {
-    chat = await Chat.findById(user.chatId);
-  }
+  // Use lean() to get a plain object instead of a Mongoose document
+  let chat = user.chatId ? await Chat.findById(user.chatId).lean() : null;
 
   if (!chat) {
-    chat = new Chat({ userId: user.telegramId, messages: [] });
-    await chat.save();
+    // Create a new chat document if it doesn't exist
+    chat = await new Chat({ userId: user.telegramId, messages: [] }).save();
     user.chatId = chat._id;
     await user.save();
+    // Retrieve as plain object for consistency
+    chat = await Chat.findById(user.chatId).lean();
   }
 
-  // 🔥 Reinitialize the chat session with previous messages
-  return model.startChat({ history: chat.messages });
-}
+  // Convert stored messages to the expected format: { role, content }
+  // Using destructuring and ternary operator for conciseness and performance.
+  const formattedMessages = chat.messages.map(({ role, parts, content }) => {
+    const finalRole = role === "model" ? "assistant" : role;
+    if (typeof content === "string") {
+      return { role: finalRole, content };
+    } else if (Array.isArray(parts)) {
+      return { role: finalRole, content: parts.map((p) => p.text).join("") };
+    }
+    return { role: finalRole, content: "" };
+  });
 
+  return formattedMessages;
+}
 async function saveChatMessage(user, userMessage, aiResponse) {
   let chat = await Chat.findById(user.chatId);
   if (!chat) return;
-
+  // Save messages using your current schema (with parts)
   chat.messages.push({ role: "user", parts: [{ text: userMessage }] });
   chat.messages.push({ role: "model", parts: [{ text: aiResponse }] });
-
   await chat.save();
 }
