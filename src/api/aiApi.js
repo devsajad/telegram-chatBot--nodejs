@@ -62,12 +62,18 @@ export default async function aiApi(userId, message, state, messageId, ctx) {
     for await (const chunk of completion) {
       responseText += chunk.choices[0].delta.content || "";
 
-      await ctx.telegram.editMessageText(
-        ctx.chat.id,
-        messageId,
-        null,
-        responseText
-      );
+      if (responseText.trim() !== "") {
+        try {
+          await ctx.telegram.editMessageText(
+            ctx.chat.id,
+            messageId,
+            null,
+            responseText
+          );
+        } catch (editError) {
+          console.log("Edit message error:", editError);
+        }
+      }
     }
 
     // Save chat history
