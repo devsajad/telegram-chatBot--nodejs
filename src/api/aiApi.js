@@ -23,7 +23,7 @@ const openai = new OpenAI({
     "X-Title": "safe", // Optional. Replace with your site name.
   },
 });
-const aiModel = "google/gemini-2.0-pro-exp-02-05:free";
+const aiModel = "google/gemini-2.0-flash-001";
 const safety = [
   { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
   { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -77,17 +77,12 @@ async function getUserChatSession(user, state) {
 
   if (!chat) {
     // Create a new chat document if it doesn't exist
-    if (state === "fight") {
-      chat = await new Chat({
-        userId: user.telegramId,
-        fightMessages: defaultFightMessages,
-      }).save();
-    } else {
-      chat = await new Chat({
-        userId: user.telegramId,
-        sexMessages: defaultSexyMessages,
-      }).save();
-    }
+
+    chat = await new Chat({
+      userId: user.telegramId,
+      fightMessages: defaultFightMessages,
+      sexMessages: defaultSexyMessages,
+    }).save();
 
     user.chatId = chat._id;
     await user.save();
