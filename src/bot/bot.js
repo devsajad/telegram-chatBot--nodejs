@@ -9,8 +9,10 @@ import {
   backButtonMessage,
   botMessages,
   fightStartMessage,
+  generalProblemMessage,
   incorrectTextMessage,
   newChatMessage,
+  rulesMessage,
   sexyStartMessage,
 } from "./messages/messages.js";
 import { chatBotBtn, StartBtn } from "./keyboard/markupKeyboard.js";
@@ -63,6 +65,10 @@ bot.hears("هات چاکلت 🍫🔥", (ctx) => {
   ctx.reply(sexyStartMessage, chatBotBtn());
 });
 
+bot.hears("درباره چت‌بات 🤖", (ctx) => {
+  ctx.reply(rulesMessage);
+});
+
 bot.hears("بازگشت 🔙", (ctx) => {
   ctx.session.state = "";
   ctx.reply(backButtonMessage, StartBtn());
@@ -88,7 +94,7 @@ bot.hears("چت جدید  🆕", async (ctx) => {
       ctx.chat.id,
       loadingMessage.message_id,
       null,
-      "مشکلی پیش اومد، لطفاً دوباره امتحان کن."
+      generalProblemMessage
     );
   }
 });
@@ -102,9 +108,9 @@ bot.on("text", async (ctx) => {
       const userMessage = ctx.message.text;
       const userId = ctx.message.from.id;
 
-      const initialMessage = await ctx.reply("Typing ...");
+      const initialMessage = await ctx.reply("در حال تایپ ...");
 
-      const aiResponse = await aiApi(
+      await aiApi(
         userId,
         userMessage,
         ctx.session.state,
@@ -116,7 +122,7 @@ bot.on("text", async (ctx) => {
     }
   } catch (error) {
     console.error("Error:", error);
-    ctx.reply("مشکلی پیش اومد، لطفاً دوباره امتحان کن.");
+    ctx.reply(generalProblemMessage);
   }
 });
 

@@ -9,7 +9,10 @@ function createKeyboard(buttons) {
 }
 
 export function StartBtn() {
-  const startBtn = [[{ text: "لا چاکت 🥸🔪" }, { text: "هات چاکلت 🍫🔥" }]];
+  const startBtn = [
+    [{ text: "لا چاکت 🥸🔪" }, { text: "هات چاکلت 🍫🔥" }],
+    [{ text: "درباره چت‌بات 🤖" }],
+  ];
 
   return createKeyboard(startBtn);
 }
