@@ -4,6 +4,19 @@ export const botMessages = {
   },
 };
 
+export const fightStartMessage =
+  "سلام من غلامم اینجام تا لاچاکتو باز کنم 🥸 کصت رو بگو ...";
+
+export const sexyStartMessage =
+  "سلام من هات چاکلتم 😋 اینجام تا آبتو بیارم 💦\nبگو ببینم دوست داری چجوری خیست کنم 😈";
+
+export const incorrectTextMessage =
+  "متوجه نشدم چی میخوای !\nلطفا یکی از دکمه‌های زیر رو انتخاب کن 👇";
+
+export const backButtonMessage = "خوش گذشت ؟ 😉\nانتخاب جدید خودت رو وارد کن";
+
+export const newChatMessage = "سابقه چت شما با موفقیت حذف شد ✅";
+
 export const defaultFightMessages = [
   { role: "user", content: "سلام غلام" },
   {

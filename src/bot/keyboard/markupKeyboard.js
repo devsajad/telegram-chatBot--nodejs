@@ -8,9 +8,14 @@ function createKeyboard(buttons) {
   };
 }
 
-
 export function StartBtn() {
   const startBtn = [[{ text: "لا چاکت 🥸🔪" }, { text: "هات چاکلت 🍫🔥" }]];
+
+  return createKeyboard(startBtn);
+}
+
+export function chatBotBtn() {
+  const startBtn = [[{ text: "بازگشت 🔙" }, { text: "چت جدید  🆕" }]];
 
   return createKeyboard(startBtn);
 }

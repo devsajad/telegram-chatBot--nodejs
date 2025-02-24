@@ -31,7 +31,7 @@ const safety = [
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
 ];
 
-export default async function aiApi(userId, message, state) {
+export default async function aiApi(userId, message, state, messageId, ctx) {
   try {
     // Retrieve user document
     let user = await User.findOne({ telegramId: userId });
@@ -55,9 +55,20 @@ export default async function aiApi(userId, message, state) {
         { role: "user", content: message },
       ],
       safety_settings: safety,
+      stream: true, // Enable streaming mode
     });
-    console.log(completion);
-    const responseText = completion.choices[0].message.content;
+
+    let responseText = "";
+    for await (const chunk of completion) {
+      responseText += chunk.choices[0].delta.content || "";
+
+      await ctx.telegram.editMessageText(
+        ctx.chat.id,
+        messageId,
+        null,
+        responseText
+      );
+    }
 
     // Save chat history
     await saveChatMessage(user, message, responseText, state);
@@ -70,14 +81,12 @@ export default async function aiApi(userId, message, state) {
     );
   }
 }
-
 async function getUserChatSession(user, state) {
   // Use lean() to get a plain object instead of a Mongoose document
   let chat = user.chatId ? await Chat.findById(user.chatId).lean() : null;
 
   if (!chat) {
     // Create a new chat document if it doesn't exist
-
     chat = await new Chat({
       userId: user.telegramId,
       fightMessages: defaultFightMessages,
@@ -88,6 +97,20 @@ async function getUserChatSession(user, state) {
     await user.save();
     // Retrieve as plain object for consistency
     chat = await Chat.findById(user.chatId).lean();
+  }
+
+  // Ensure default messages are present if they are missing
+  if (chat.fightMessages.length === 0) {
+    chat.fightMessages = defaultFightMessages;
+    await Chat.findByIdAndUpdate(chat._id, {
+      fightMessages: defaultFightMessages,
+    });
+  }
+  if (chat.sexMessages.length === 0) {
+    chat.sexMessages = defaultSexyMessages;
+    await Chat.findByIdAndUpdate(chat._id, {
+      sexMessages: defaultSexyMessages,
+    });
   }
 
   // Convert stored messages to the expected format: { role, content }
@@ -109,6 +132,7 @@ async function getUserChatSession(user, state) {
 }
 
 async function saveChatMessage(user, userMessage, aiResponse, state) {
+  if (!user.chatId) return;
   let chat = await Chat.findById(user.chatId);
   if (!chat) return;
   // Save messages using your current schema (with parts)
@@ -122,8 +146,8 @@ async function saveChatMessage(user, userMessage, aiResponse, state) {
 
   await chat.save();
 }
-
 function getRandomMessage(messages) {
-  const randomIndex = Math.floor(Math.random() * messages.length);
+  const messagesLength = messages.length;
+  const randomIndex = Math.floor(Math.random() * messagesLength);
   return messages[randomIndex];
 }

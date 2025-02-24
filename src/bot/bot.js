@@ -5,8 +5,16 @@ import { Mongo } from "@telegraf/session/mongodb";
 import { session, Telegraf } from "telegraf";
 import aiApi from "../api/aiApi.js";
 import createUserToDB from "../utils/createUser.js";
-import {botMessages} from "./messages/messages.js";
-import { StartBtn } from "./keyboard/markupKeyboard.js";
+import {
+  backButtonMessage,
+  botMessages,
+  fightStartMessage,
+  incorrectTextMessage,
+  newChatMessage,
+  sexyStartMessage,
+} from "./messages/messages.js";
+import { chatBotBtn, StartBtn } from "./keyboard/markupKeyboard.js";
+import clearChatSession from "../utils/clearChatSession.js";
 
 // MongoDB session store
 const store = Mongo({
@@ -37,9 +45,7 @@ bot.start((ctx) => {
   ctx.reply(botMessages.welcome(firstName), StartBtn());
   createUserToDB(id, firstName, lastName, username);
 
-  if (!ctx.session.state) {
-    ctx.session.state = "";
-  }
+  ctx.session.state = "";
 });
 
 bot.action("start", (ctx) => {
@@ -49,29 +55,65 @@ bot.action("start", (ctx) => {
 
 bot.hears("لا چاکت 🥸🔪", (ctx) => {
   ctx.session.state = "fight";
-  ctx.reply("سلام من غلامم اینجام تا لاچاکتو باز کنم 🥸 کصت رو بگو ...");
+  ctx.reply(fightStartMessage, chatBotBtn());
 });
 
 bot.hears("هات چاکلت 🍫🔥", (ctx) => {
   ctx.session.state = "sexy";
-  ctx.reply(
-    "سلام من هات چاکلتم 😋 اینجام تا آبتو بیارم 💦\nبگو ببینم دوست داری چجوری خیست کنم 😈"
-  );
+  ctx.reply(sexyStartMessage, chatBotBtn());
+});
+
+bot.hears("بازگشت 🔙", (ctx) => {
+  ctx.session.state = "";
+  ctx.reply(backButtonMessage, StartBtn());
+});
+
+bot.hears("چت جدید  🆕", async (ctx) => {
+  try {
+    // Indicate loading action
+    const loadingMessage = await ctx.reply("در حال پردازش...");
+
+    await clearChatSession(ctx.message.from.id, ctx.session.state);
+
+    // Edit the loading message to the final response
+    await ctx.telegram.editMessageText(
+      ctx.chat.id,
+      loadingMessage.message_id,
+      null,
+      newChatMessage
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    ctx.telegram.editMessageText(
+      ctx.chat.id,
+      loadingMessage.message_id,
+      null,
+      "مشکلی پیش اومد، لطفاً دوباره امتحان کن."
+    );
+  }
 });
 
 // Example to check state on text message
 bot.on("text", async (ctx) => {
   try {
-    await ctx.sendChatAction("typing");
-
-    const userMessage = ctx.message.text;
-    const userId = ctx.message.from.id;
-
-    const aiResponse = await aiApi(userId, userMessage, ctx.session.state);
-
     // Indicate typing action
+    await ctx.sendChatAction("typing");
+    if (ctx.session.state === "fight" || ctx.session.state === "sexy") {
+      const userMessage = ctx.message.text;
+      const userId = ctx.message.from.id;
 
-    ctx.reply(aiResponse);
+      const initialMessage = await ctx.reply("Typing ...");
+
+      const aiResponse = await aiApi(
+        userId,
+        userMessage,
+        ctx.session.state,
+        initialMessage.message_id,
+        ctx
+      );
+    } else {
+      ctx.reply(incorrectTextMessage, chatBotBtn());
+    }
   } catch (error) {
     console.error("Error:", error);
     ctx.reply("مشکلی پیش اومد، لطفاً دوباره امتحان کن.");
