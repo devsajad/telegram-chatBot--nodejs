@@ -31,7 +31,14 @@ const safety = [
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
 ];
 
-export default async function aiApi(userId, message, state, messageId, ctx) {
+export default async function aiApi(
+  userId,
+  message,
+  state,
+  sex,
+  messageId,
+  ctx
+) {
   try {
     // Retrieve user document
     let user = await User.findOne({ telegramId: userId });
@@ -41,8 +48,7 @@ export default async function aiApi(userId, message, state, messageId, ctx) {
         : userNotFoundMessagesexy;
 
     // Retrieve or create a chat session for the user
-    let chatSession = await getUserChatSession(user, state);
-
+    let chatSession = await getUserChatSession(user, state, sex);
     // Send request to OpenRouter using the OpenAI API interface
     const completion = await openai.chat.completions.create({
       model: aiModel,
@@ -87,7 +93,7 @@ export default async function aiApi(userId, message, state, messageId, ctx) {
     );
   }
 }
-async function getUserChatSession(user, state) {
+async function getUserChatSession(user, state, sex) {
   // Use lean() to get a plain object instead of a Mongoose document
   let chat = user.chatId ? await Chat.findById(user.chatId).lean() : null;
 
@@ -96,7 +102,7 @@ async function getUserChatSession(user, state) {
     chat = await new Chat({
       userId: user.telegramId,
       fightMessages: defaultFightMessages,
-      sexMessages: defaultSexyMessages,
+      sexMessages: defaultSexyMessages(sex),
     }).save();
 
     user.chatId = chat._id;
@@ -113,9 +119,9 @@ async function getUserChatSession(user, state) {
     });
   }
   if (chat.sexMessages.length === 0) {
-    chat.sexMessages = defaultSexyMessages;
+    chat.sexMessages = defaultSexyMessages(sex);
     await Chat.findByIdAndUpdate(chat._id, {
-      sexMessages: defaultSexyMessages,
+      sexMessages: defaultSexyMessages(sex),
     });
   }
 

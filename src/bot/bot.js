@@ -8,6 +8,7 @@ import createUserToDB from "../utils/createUser.js";
 import {
   backButtonMessage,
   botMessages,
+  chooseSexMessage,
   fightStartMessage,
   generalProblemMessage,
   incorrectTextMessage,
@@ -17,6 +18,7 @@ import {
 } from "./messages/messages.js";
 import { chatBotBtn, StartBtn } from "./keyboard/markupKeyboard.js";
 import clearChatSession from "../utils/clearChatSession.js";
+import { Markup } from "telegraf";
 
 // MongoDB session store
 const store = Mongo({
@@ -60,9 +62,18 @@ bot.hears("لا چاکت 🥸🔪", (ctx) => {
   ctx.reply(fightStartMessage, chatBotBtn());
 });
 
-bot.hears("هات چاکلت 🍫🔥", (ctx) => {
+bot.hears("هات چاکلت 🍫🔥", async (ctx) => {
   ctx.session.state = "sexy";
-  ctx.reply(sexyStartMessage, chatBotBtn());
+  await ctx.reply(sexyStartMessage, chatBotBtn());
+  await ctx.reply(
+    chooseSexMessage,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback("مرد 🍆", "sex_male"),
+        Markup.button.callback("زن 🍑", "sex_female"),
+      ],
+    ])
+  );
 });
 
 bot.hears("درباره چت‌بات 🤖", (ctx) => {
@@ -99,11 +110,42 @@ bot.hears("چت جدید  🆕", async (ctx) => {
   }
 });
 
+// INLINE KEYBOARD ATIONS
+bot.action("sex_male", async (ctx) => {
+  ctx.session.sex = "male";
+  await clearChatSession(ctx.callbackQuery.from.id, ctx.session.state);
+  await ctx.reply(
+    "الان یه مرد حشری‌ام که دلش میخواد جرت بده😈\n خب از کجا شروع کنیم ؟"
+  );
+});
+
+bot.action("sex_female", async (ctx) => {
+  ctx.session.sex = "female";
+  await clearChatSession(ctx.callbackQuery.from.id, ctx.session.state);
+  await ctx.reply(
+    "الان یه دختر سکسی و حشری ام با یه کص داغ 💦🤤 \n زود باش شروع کن میخوای باهام چیکار کنی ؟ 😋"
+  );
+});
+
 // Example to check state on text message
 bot.on("text", async (ctx) => {
   try {
+    if (ctx.session.state === "sexy" && !ctx.session.sex) {
+      await ctx.reply(
+        chooseSexMessage,
+        Markup.inlineKeyboard([
+          [
+            Markup.button.callback("مرد 🍆", "sex_male"),
+            Markup.button.callback("زن 🍑", "sex_female"),
+          ],
+        ])
+      );
+      return;
+    }
+
     // Indicate typing action
     await ctx.sendChatAction("typing");
+
     if (ctx.session.state === "fight" || ctx.session.state === "sexy") {
       const userMessage = ctx.message.text;
       const userId = ctx.message.from.id;
@@ -114,6 +156,7 @@ bot.on("text", async (ctx) => {
         userId,
         userMessage,
         ctx.session.state,
+        ctx.session.sex,
         initialMessage.message_id,
         ctx
       );
