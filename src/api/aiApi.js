@@ -1,4 +1,6 @@
 import dotenv from "dotenv";
+dotenv.config();
+
 import OpenAI from "openai";
 import User from "../models/User.js";
 import Chat from "../models/Chat.js";
@@ -11,19 +13,23 @@ import {
   defaultFightMessages,
   sexySystemInstruct,
   fightSystemInstruct,
+  sendingProblemMessage,
 } from "../bot/messages/messages.js";
+import { selectApi, getTimeUntilNextAvailable } from "../api/selectApiPool.js";
 
-dotenv.config();
+// Function to configure OpenAI client using a given API key.
+function openAiConfig(apiKey) {
+  return new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: apiKey,
+    defaultHeaders: {
+      "HTTP-Referer": "safe", // Replace with your site URL if needed.
+      "X-Title": "safe", // Replace with your site name if needed.
+    },
+  });
+}
 
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.GOOGLE_API_KEY_1,
-  defaultHeaders: {
-    "HTTP-Referer": "safe", // Optional. Replace with your site URL.
-    "X-Title": "safe", // Optional. Replace with your site name.
-  },
-});
-const aiModel = "google/gemini-2.0-flash-001";
+const aiModel = "google/gemini-exp-1206:free";
 const safety = [
   { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
   { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -40,16 +46,31 @@ export default async function aiApi(
   ctx
 ) {
   try {
-    // Retrieve user document
+    // Retrieve user document.
     let user = await User.findOne({ telegramId: userId });
     if (!user)
       return state === "fight"
         ? userNotFoundMessageFight
         : userNotFoundMessagesexy;
 
-    // Retrieve or create a chat session for the user
+    // Check API availability.
+    const selectedApi = selectApi();
+    if (!selectedApi) {
+      const waitTime = getTimeUntilNextAvailable();
+      return watingSecondMessage(Math.ceil(waitTime));
+    }
+
+    // Configure OpenAI client with the selected API key.
+    const openai = openAiConfig(selectedApi.key);
+    // Increment counters before sending the request.
+    selectedApi.requestsThisMinute++;
+    selectedApi.requestsToday++;
+
+    // Retrieve or create a chat session for the user.
     let chatSession = await getUserChatSession(user, state, sex);
-    // Send request to OpenRouter using the OpenAI API interface
+    // console.log("Formatted chat history:", chatSession);
+
+    // Send request to OpenRouter using the OpenAI API interface with streaming.
     const completion = await openai.chat.completions.create({
       model: aiModel,
       messages: [
@@ -61,13 +82,13 @@ export default async function aiApi(
         { role: "user", content: message },
       ],
       safety_settings: safety,
-      stream: true, // Enable streaming mode
+      stream: true, // Enable streaming mode.
     });
 
     let responseText = "";
+    // Process each streamed chunk.
     for await (const chunk of completion) {
       responseText += chunk.choices[0].delta.content || "";
-
       if (responseText.trim() !== "") {
         try {
           await ctx.telegram.editMessageText(
@@ -77,28 +98,30 @@ export default async function aiApi(
             responseText
           );
         } catch (editError) {
-          console.log("Edit message error:", editError);
+          // console.log("Edit message error:", editError);
         }
       }
     }
 
-    // Save chat history
+    // Save chat history.
     await saveChatMessage(user, message, responseText, state);
-
     return responseText;
   } catch (error) {
     console.log("Ai Api problem:", error);
-    return getRandomMessage(
-      state === "fight" ? fightErrorMessages : sexyErrorMessages
-    );
+    // If we hit a rate-limit error, mark this API key as exhausted and retry.
+    if (error.code === 429 || error.status === 401) {
+      selectedApi.requestsThisMinute = 10;
+    }
+    return sendingProblemMessage;
   }
 }
+
 async function getUserChatSession(user, state, sex) {
-  // Use lean() to get a plain object instead of a Mongoose document
+  // Retrieve the chat document using lean() for performance.
   let chat = user.chatId ? await Chat.findById(user.chatId).lean() : null;
 
   if (!chat) {
-    // Create a new chat document if it doesn't exist
+    // Create a new chat document if it doesn't exist.
     chat = await new Chat({
       userId: user.telegramId,
       fightMessages: defaultFightMessages,
@@ -107,11 +130,10 @@ async function getUserChatSession(user, state, sex) {
 
     user.chatId = chat._id;
     await user.save();
-    // Retrieve as plain object for consistency
     chat = await Chat.findById(user.chatId).lean();
   }
 
-  // Ensure default messages are present if they are missing
+  // Ensure default messages are present.
   if (chat.fightMessages.length === 0) {
     chat.fightMessages = defaultFightMessages;
     await Chat.findByIdAndUpdate(chat._id, {
@@ -125,9 +147,9 @@ async function getUserChatSession(user, state, sex) {
     });
   }
 
-  // Convert stored messages to the expected format: { role, content }
-  // Using destructuring and ternary operator for conciseness and performance.
+  // Select messages based on state and convert stored messages to the expected format.
   const messages = state === "fight" ? chat.fightMessages : chat.sexMessages;
+
   const formattedMessages = messages.map(({ role, parts, content }) => {
     const finalRole = role === "model" ? "assistant" : role;
 
@@ -136,7 +158,6 @@ async function getUserChatSession(user, state, sex) {
     } else if (Array.isArray(parts)) {
       return { role: finalRole, content: parts.map((p) => p.text).join("") };
     }
-
     return { role: finalRole, content: "" };
   });
 
@@ -147,7 +168,7 @@ async function saveChatMessage(user, userMessage, aiResponse, state) {
   if (!user.chatId) return;
   let chat = await Chat.findById(user.chatId);
   if (!chat) return;
-  // Save messages using your current schema (with parts)
+  // Save messages in your stored schema (with parts).
   if (state === "fight") {
     chat.fightMessages.push({ role: "user", parts: [{ text: userMessage }] });
     chat.fightMessages.push({ role: "model", parts: [{ text: aiResponse }] });
@@ -158,8 +179,8 @@ async function saveChatMessage(user, userMessage, aiResponse, state) {
 
   await chat.save();
 }
+
 function getRandomMessage(messages) {
-  const messagesLength = messages.length;
-  const randomIndex = Math.floor(Math.random() * messagesLength);
+  const randomIndex = Math.floor(Math.random() * messages.length);
   return messages[randomIndex];
 }

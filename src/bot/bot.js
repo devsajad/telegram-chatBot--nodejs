@@ -11,6 +11,8 @@ import {
   chooseSexMessage,
   fightStartMessage,
   generalProblemMessage,
+  iAmManMessage,
+  iAmWomanMessage,
   incorrectTextMessage,
   newChatMessage,
   rulesMessage,
@@ -19,6 +21,7 @@ import {
 import { chatBotBtn, StartBtn } from "./keyboard/markupKeyboard.js";
 import clearChatSession from "../utils/clearChatSession.js";
 import { Markup } from "telegraf";
+
 
 // MongoDB session store
 const store = Mongo({
@@ -114,17 +117,13 @@ bot.hears("چت جدید  🆕", async (ctx) => {
 bot.action("sex_male", async (ctx) => {
   ctx.session.sex = "male";
   await clearChatSession(ctx.callbackQuery.from.id, ctx.session.state);
-  await ctx.reply(
-    "الان یه مرد حشری‌ام که دلش میخواد جرت بده😈\n خب از کجا شروع کنیم ؟"
-  );
+  await ctx.reply(iAmManMessage);
 });
 
 bot.action("sex_female", async (ctx) => {
   ctx.session.sex = "female";
   await clearChatSession(ctx.callbackQuery.from.id, ctx.session.state);
-  await ctx.reply(
-    "الان یه دختر سکسی و حشری ام با یه کص داغ 💦🤤 \n زود باش شروع کن میخوای باهام چیکار کنی ؟ 😋"
-  );
+  await ctx.reply(iAmWomanMessage);
 });
 
 // Example to check state on text message
