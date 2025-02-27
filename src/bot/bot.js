@@ -44,7 +44,7 @@ bot.use((ctx, next) => {
 
 // Cooldown middleware
 
-bot.start((ctx) => {
+bot.start(async (ctx) => {
   const {
     id,
     first_name: firstName,
@@ -52,10 +52,17 @@ bot.start((ctx) => {
     username,
   } = ctx.message.from;
 
-  ctx.reply(botMessages.welcome(firstName), StartBtn());
-  createUserToDB(id, firstName, lastName, username);
-
-  ctx.session.state = "";
+  try {
+    await ctx.reply(botMessages.welcome(firstName), StartBtn());
+    createUserToDB(id, firstName, lastName, username);
+    ctx.session.state = "";
+  } catch (error) {
+    if (error.code === 403) {
+      console.log(`Bot was blocked by the user: ${id}`);
+    } else {
+      console.error("Error:", error);
+    }
+  }
 });
 
 bot.hears("لا چاکت 🥸🔪", (ctx) => {
@@ -101,17 +108,21 @@ bot.hears("چت جدید  🆕", async (ctx) => {
       newChatMessage
     );
   } catch (error) {
-    console.error("Error:", error);
-    ctx.telegram.editMessageText(
-      ctx.chat.id,
-      loadingMessage.message_id,
-      null,
-      generalProblemMessage
-    );
+    if (error.code === 403) {
+      console.log(`Bot was blocked by the user: ${ctx.message.from.id}`);
+    } else {
+      console.error("Error:", error);
+      ctx.telegram.editMessageText(
+        ctx.chat.id,
+        loadingMessage.message_id,
+        null,
+        generalProblemMessage
+      );
+    }
   }
 });
 
-// INLINE KEYBOARD ATIONS
+// INLINE KEYBOARD ACTIONS
 bot.action("sex_male", async (ctx) => {
   ctx.session.sex = "male";
   await clearChatSession(ctx.callbackQuery.from.id, ctx.session.state);
@@ -164,8 +175,12 @@ bot.on("text", async (ctx) => {
       ctx.reply(incorrectTextMessage, StartBtn());
     }
   } catch (error) {
-    console.error("Error:", error);
-    ctx.reply(generalProblemMessage);
+    if (error.code === 403) {
+      console.log(`Bot was blocked by the user: ${ctx.message.from.id}`);
+    } else {
+      console.log("Error:", error);
+      ctx.reply(generalProblemMessage);
+    }
   }
 });
 

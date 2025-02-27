@@ -52,6 +52,7 @@ export default async function aiApi(
     if (!user) return getUserNotFoundMessage(state);
 
     selectedApi = selectApi();
+    console.log(selectedApi);
     if (!selectedApi) return getWaitTimeMessage();
 
     const openai = openAiConfig(selectedApi.key);
