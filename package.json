@@ -2,6 +2,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "@telegraf/session": "^2.0.0-beta.7",
+    "axios": "^1.8.1",
     "dotenv": "^16.4.7",
     "mongodb": "^6.13.1",
     "mongoose": "^8.10.1",
@@ -13,6 +14,8 @@
   "main": "bot.js",
   "scripts": {
     "start": "nodemon index.js",
+    "remove": "node ./src/scripts/removeSexMessages.js",
+    "testApis": "node ./src/scripts/testApis.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
