@@ -17,11 +17,12 @@ import {
   newChatMessage,
   rulesMessage,
   sexyStartMessage,
+  watingSecondMessage,
 } from "./messages/messages.js";
 import { chatBotBtn, StartBtn } from "./keyboard/markupKeyboard.js";
 import clearChatSession from "../utils/clearChatSession.js";
 import { Markup } from "telegraf";
-
+import cooldown from "../utils/coolDown.js";
 
 // MongoDB session store
 const store = Mongo({
@@ -41,6 +42,8 @@ bot.use((ctx, next) => {
   return next();
 });
 
+// Cooldown middleware
+
 bot.start((ctx) => {
   const {
     id,
@@ -53,11 +56,6 @@ bot.start((ctx) => {
   createUserToDB(id, firstName, lastName, username);
 
   ctx.session.state = "";
-});
-
-bot.action("start", (ctx) => {
-  ctx.session.state = "start"; // Update session state
-  ctx.reply("You clicked the start button!", AnotherBtn());
 });
 
 bot.hears("لا چاکت 🥸🔪", (ctx) => {
@@ -129,6 +127,9 @@ bot.action("sex_female", async (ctx) => {
 // Example to check state on text message
 bot.on("text", async (ctx) => {
   try {
+    const { timerFinished, time } = cooldown(process.env.REQ_PER_USER, ctx);
+    if (!timerFinished) return await ctx.reply(watingSecondMessage(time));
+
     if (ctx.session.state === "sexy" && !ctx.session.sex) {
       await ctx.reply(
         chooseSexMessage,
@@ -151,7 +152,7 @@ bot.on("text", async (ctx) => {
 
       const initialMessage = await ctx.reply("در حال تایپ ...");
 
-      await aiApi(
+      aiApi(
         userId,
         userMessage,
         ctx.session.state,
@@ -160,7 +161,7 @@ bot.on("text", async (ctx) => {
         ctx
       );
     } else {
-      ctx.reply(incorrectTextMessage, chatBotBtn());
+      ctx.reply(incorrectTextMessage, StartBtn());
     }
   } catch (error) {
     console.error("Error:", error);

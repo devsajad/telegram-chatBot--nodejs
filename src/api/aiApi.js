@@ -135,7 +135,7 @@ async function updateMessage(ctx, messageId, responseText) {
         responseText
       );
     } catch (editError) {
-      console.log("Edit message error:", editError);
+      console.log("Warning : Edit message error");
     }
   }
 }
