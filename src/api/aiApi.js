@@ -12,6 +12,7 @@ import {
   sexySystemInstruct,
   fightSystemInstruct,
   sendingProblemMessage,
+  watingSecondMessage,
 } from "../bot/messages/messages.js";
 import { selectApi, getTimeUntilNextAvailable } from "../api/selectApiPool.js";
 
