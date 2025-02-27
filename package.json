@@ -16,7 +16,8 @@
     "start": "nodemon index.js",
     "remove": "node ./src/scripts/removeSexMessages.js",
     "testApis": "node ./src/scripts/testApis.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "send": "node  ./src/scripts/sendUsersMessage.js"
   },
   "keywords": [],
   "author": "",
