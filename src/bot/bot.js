@@ -53,7 +53,7 @@ bot.start(async (ctx) => {
   } = ctx.message.from;
 
   try {
-    await ctx.reply(botMessages.progress(firstName), StartBtn());
+    await ctx.reply(botMessages.welcome(firstName), StartBtn());
     createUserToDB(id, firstName, lastName, username);
     ctx.session.state = "";
   } catch (error) {

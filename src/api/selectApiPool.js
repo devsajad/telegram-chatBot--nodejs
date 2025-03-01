@@ -1,12 +1,13 @@
 import dotenv from "dotenv";
 dotenv.config();
 import apiPool from "./apiPool.js";
+
 // Updates the counters for one API key based on the current time.
 function updateApiCounters(api) {
   const now = Date.now();
   if (now >= api.minuteResetTime) {
     api.requestsThisMinute = 0;
-    api.minuteResetTime = now + 60 * 1000;
+    api.minuteResetTime = now + 60 * 1000 * process.env.API_LIMITATION_MINUTES;
   }
   if (now >= api.dayResetTime) {
     api.requestsToday = 0;
@@ -28,7 +29,7 @@ export function selectApi() {
   if (available.length === 0) return null;
   // Here you can choose a strategy: for instance, pick the one with the fewest requests this minute.
   available.sort((a, b) => a.requestsThisMinute - b.requestsThisMinute);
-  return available[0];
+  return available;
 }
 
 // Returns the number of seconds until the next API key becomes available.

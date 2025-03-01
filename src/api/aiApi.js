@@ -46,33 +46,50 @@ export default async function aiApi(
   messageId,
   ctx
 ) {
-  let selectedApi;
+  let selectedApis;
   try {
     const user = await getUser(userId);
     if (!user) return getUserNotFoundMessage(state);
 
-    selectedApi = selectApi();
-    console.log(selectedApi);
-    if (!selectedApi) return getWaitTimeMessage();
+    selectedApis = selectApi();
+    if (!selectedApis || selectedApis.length === 0)
+      throw new Error("No API Key Available");
 
-    const openai = openAiConfig(selectedApi.key);
-    incrementApiCounters(selectedApi);
+    let responseText;
+    for (const selectedApi of selectedApis) {
+      try {
+        console.log("testing .... : ", selectedApi.key);
 
-    const chatSession = await getUserChatSession(user, state, sex);
-    const responseText = await getAiResponse(
-      openai,
-      chatSession,
-      message,
-      state,
-      messageId,
-      ctx
-    );
+        const openai = openAiConfig(selectedApi.key);
+        incrementApiCounters(selectedApi);
 
-    await saveChatMessage(user, message, responseText, state);
+        const chatSession = await getUserChatSession(user, state, sex);
+        responseText = await getAiResponse(
+          openai,
+          chatSession,
+          message,
+          state,
+          messageId,
+          ctx
+        );
 
-    return responseText;
+        await saveChatMessage(user, message, responseText, state);
+        console.log("Api Valid");
+        return responseText;
+      } catch (error) {
+        if (error.code === 429 || error.status === 401) {
+          console.log("Api locked");
+          selectedApi.requestsThisMinute = process.env.REQ_PER_MIN;
+          selectedApi.requestsToday++;
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    return sendingProblemMessage;
   } catch (error) {
-    handleApiError(error, selectedApi);
+    console.log("Ai Api problem:", error);
     return sendingProblemMessage;
   }
 }
@@ -136,9 +153,7 @@ async function updateMessage(ctx, messageId, responseText) {
         null,
         responseText
       );
-    } catch (editError) {
-      console.log("Warning : Edit message error");
-    }
+    } catch (editError) {}
   }
 }
 
@@ -209,11 +224,4 @@ async function saveChatMessage(user, userMessage, aiResponse, state) {
   }
 
   await chat.save();
-}
-
-function handleApiError(error, selectedApi) {
-  console.log("Ai Api problem:", error);
-  if (error.code === 429 || error.status === 401) {
-    selectedApi.requestsThisMinute = 10;
-  }
 }

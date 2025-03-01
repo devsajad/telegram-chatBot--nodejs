@@ -41,7 +41,8 @@ const sendMessageToAllUsers = async (message) => {
 // Run the script
 const run = async () => {
   await connectDB();
-  const message = "Your custom message here";
+  const message =
+    "به علت بروزرسانی چت بات از دسترس خارج شد ⌛\nاز صبر شما ممنونیم 🙏😌";
   await sendMessageToAllUsers(message);
 };
 
