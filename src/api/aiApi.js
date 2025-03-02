@@ -80,7 +80,7 @@ export default async function aiApi(
         if (error.code === 429 || error.status === 401) {
           console.log("Api locked");
           selectedApi.requestsThisMinute = process.env.REQ_PER_MIN;
-          selectedApi.requestsToday++;
+          // selectedApi.requestsToday++;
         } else {
           throw error;
         }
@@ -110,7 +110,7 @@ function getWaitTimeMessage() {
 
 function incrementApiCounters(selectedApi) {
   selectedApi.requestsThisMinute++;
-  selectedApi.requestsToday++;
+  // selectedApi.requestsToday++;
 }
 
 async function getAiResponse(
