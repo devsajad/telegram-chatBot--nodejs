@@ -90,7 +90,7 @@ export default async function aiApi(
     return sendingProblemMessage;
   } catch (error) {
     console.log("Ai Api problem:", error);
-    return sendingProblemMessage;
+    throw new Error(sendingProblemMessage);
   }
 }
 
