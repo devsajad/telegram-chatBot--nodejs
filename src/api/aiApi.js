@@ -82,7 +82,7 @@ export default async function aiApi(
           selectedApi.requestsThisMinute = process.env.REQ_PER_MIN;
           // selectedApi.requestsToday++;
         } else {
-          throw error;
+          console.log(error);
         }
       }
     }
