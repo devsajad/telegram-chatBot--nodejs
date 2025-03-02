@@ -21,8 +21,10 @@ export function selectApi() {
   apiPool.forEach(updateApiCounters);
   // Find all keys that are below both limits.
   const available = apiPool.filter(
-    api.requestsThisMinute < process.env.REQ_PER_MIN &&
-    api.requestsToday < process.env.REQ_PER_DAY
+    (api) =>
+      api.requestsThisMinute < process.env.REQ_PER_MIN &&
+      api.requestsToday < process.env.REQ_PER_DAY
+    // api.requestsThisMinute < process.env.REQ_PER_MIN
   );
   if (available.length === 0) return null;
   // Here you can choose a strategy: for instance, pick the one with the fewest requests this minute.
