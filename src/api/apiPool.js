@@ -12,8 +12,8 @@ apiKeys.forEach((key) => {
     key: process.env[key],
     requestsThisMinute: 0,
     minuteResetTime: Date.now() + 60 * 1000,
-    // requestsToday: 0,
-    // dayResetTime: Date.now() + 24 * 60 * 60 * 1000,
+    requestsToday: 0,
+    dayResetTime: Date.now() + 24 * 60 * 60 * 1000,
   });
 });
 
